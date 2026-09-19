@@ -56,12 +56,45 @@ SELECT
 FROM orders
 ORDER BY id DESC;
 
---SELECT TOP 10
---    order_code,
---    ticket_type,
---    amount,
---    payment_content,
---    status,
---    paid_at
---FROM orders
---ORDER BY id DESC;
+SELECT payment_content FROM ORDERS WHERE payment_content = 'DH17888676302362C2B';
+
+USE ticket_shop;
+
+CREATE TABLE payment_config (
+    id INT PRIMARY KEY,
+    bank_id NVARCHAR(50) NOT NULL,
+    account_number VARCHAR(50) NOT NULL,
+    account_name NVARCHAR(255) NOT NULL,
+    updated_at DATETIME2 DEFAULT GETDATE()
+);
+
+INSERT INTO payment_config
+(
+    id,
+    bank_id,
+    account_number,
+    account_name
+)
+VALUES
+(
+    1,
+    '',
+    '',
+    ''
+);
+
+SELECT TOP 10
+    order_code,
+    ticket_type,
+    amount,
+    payment_content,
+    status,
+    paid_at
+FROM orders
+ORDER BY id DESC;
+
+--SELECT
+--    bank_id,
+--    account_number,
+--    account_name
+--FROM payment_config

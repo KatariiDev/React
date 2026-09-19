@@ -42,8 +42,23 @@
         <img id="anhQR" src="" alt="Chọn vé để hiển thị mã QR" style="width: 250px; height: 250px; border: 1px solid #ddd; display: none; margin: 0 auto;"/>    
     </div>
 
-    <div >
 
+    <div class="payment-config">
+        <label for="bankAccount" class="choice">
+            Chọn tài khoản thanh toán:
+        </label>
+
+        <select id="bankAccount">
+            <option value="">-- Đang tải tài khoản --</option>
+        </select>
+
+        <p id="selectedBank"></p>
+
+        <button id="confirmBank" type="button">
+            Xác nhận
+        </button>
+
+        <p id="confirmMessage"></p>
     </div>
 
     <script src="./main.js"></script>

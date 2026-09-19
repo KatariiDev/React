@@ -56,11 +56,8 @@ buttons.forEach(button => {
             imgQr.style.display = 'block';
 
             console.log('Đã tạo đơn:', data);
-
-            // ==============================
+            
             // KIỂM TRA TRẠNG THÁI THANH TOÁN
-            // ==============================
-
             const orderCode = data.orderCode;
 
             const checkPayment = setInterval(async () => {
@@ -115,3 +112,160 @@ buttons.forEach(button => {
         }
     });
 });
+
+async function loadBankAccounts() {
+    const select = document.getElementById('bankAccount');
+    const selectedBank = document.getElementById('selectedBank');
+    const confirmButton = document.getElementById('confirmBank');
+    const confirmMessage = document.getElementById('confirmMessage');
+
+    try {
+        const response = await fetch('/api/payment-methods');
+        const result = await response.json();
+
+        if (!result.success) {
+            throw new Error(
+                result.message ||
+                'Không lấy được danh sách tài khoản'
+            );
+        }
+
+        select.innerHTML =
+            '<option value="">-- Chọn tài khoản --</option>';
+
+        result.data.forEach(account => {
+            const option =
+                document.createElement('option');
+
+            option.value = account.id;
+
+            option.textContent =
+                `${account.bankName} - ` +
+                `${account.accountNumber} - ` +
+                `${account.accountHolder}`;
+
+            option.dataset.bankName =
+                account.bankName;
+
+            option.dataset.accountNumber =
+                account.accountNumber;
+
+            option.dataset.accountHolder =
+                account.accountHolder;
+
+            select.appendChild(option);
+        })
+
+        select.addEventListener('change', () => {
+            const option =
+                select.options[select.selectedIndex];
+
+            if (!option.value) {
+                selectedBank.textContent = '';
+                return;
+            }
+            selectedBank.textContent =
+                `Đã chọn: ` +
+                `${option.dataset.bankName} - ` +
+                `${option.dataset.accountNumber} - ` +
+                `${option.dataset.accountHolder}`;
+
+            confirmMessage.textContent = '';
+        });
+
+        confirmButton.addEventListener(
+            'click',
+            async () => {
+                const option =
+                    select.options[select.selectedIndex];
+
+                if (!option.value) {
+                    confirmMessage.textContent =
+                        'Vui lòng chọn tài khoản';
+
+                    return;
+                }
+
+                const accountNumber =
+                    option.dataset.accountNumber;
+
+                const bankName =
+                    option.dataset.bankName;
+
+                const accountName =
+                    option.dataset.accountHolder;
+
+                try {
+                    confirmButton.disabled = true;
+                    confirmMessage.textContent = 'Đang xác nhận...';
+                    const response =
+                        await fetch(
+                            '/api/admin/payment-account',
+                            {
+                                method: 'POST',
+
+                                headers: {
+                                    'Content-Type':
+                                        'application/json'
+                                },
+
+                                body: JSON.stringify({
+                                    accountNumber,
+                                    bankName,
+                                    accountName
+                                })
+                            }
+                        );
+
+                    const data =
+                        await response.json();
+
+                    if (!response.ok ||
+                        !data.success) {
+
+                        throw new Error(
+                            data.message ||
+                            'Xác nhận tài khoản thất bại'
+                        );
+                    }
+
+                    confirmMessage.textContent =
+                        `${data.message}`;
+
+                    console.log(
+                        'Tài khoản đã xác nhận:',
+                        data.data
+                    );
+
+                } catch (error) {
+
+                    console.error(
+                        'Lỗi xác nhận:',
+                        error
+                    );
+
+                    confirmMessage.textContent =
+                        `${error.message}`;
+
+                } finally {
+
+                    confirmButton.disabled = false;
+                }
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            'Lỗi tải tài khoản:',
+            error
+        );
+
+        select.innerHTML =
+            '<option value="">-- Không thể tải tài khoản --</option>';
+
+        selectedBank.textContent = error.message;
+    }
+}
+
+loadBankAccounts();

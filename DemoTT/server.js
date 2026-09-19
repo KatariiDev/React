@@ -4,6 +4,7 @@ import dotenv, { config } from 'dotenv'
 import crypto from 'crypto'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { stringify } from 'querystring'
 
 dotenv.config();
 
@@ -38,8 +39,293 @@ const tickets = {
     'VE VIP': 3000
 }
 
+async function getSepayBankAccounts() {
+    const token = process.env.SEPAY_API_TOKEN?.trim();
+
+    if (!token) {
+        throw new Error('Thieu SEPAY_API_TOKEN');
+    }
+
+    const response = await fetch(
+        'https://userapi.sepay.vn/v2/bank-accounts',
+        {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        }
+        
+    );
+
+    const data = await response.json();
+    console.log('jnjnj' + JSON.stringify(data))
+
+    if (!response.ok) {
+        throw new Error(
+            `SePay API error ${response.status}: ${JSON.stringify(data)}`
+        );
+    }
+
+    if (!data.data || !Array.isArray(data.data)) {
+        throw new Error(
+            'SePay khong tra ve danh sach tai khoan hop le'
+        );
+    }
+
+    return data.data;
+}
+
+function normalizeText(text) {
+    return String(text || '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toUpperCase();
+}
+
+
+async function getSepayBankAccount() {
+    const pool = await sql.connect(dbConfig);
+
+    const result = await pool
+        .request()
+        .input('id', sql.Int, 1)
+        .query(`
+            SELECT
+                bank_id,
+                account_number,
+                account_name
+            FROM payment_config
+            WHERE id = @id
+        `);
+
+    if (result.recordset.length === 0) {
+        throw new Error(
+            'Chua co cau hinh tai khoan thanh toan'
+        );
+    }
+
+    const account = result.recordset[0];
+
+    if (
+        !account.account_number ||
+        !account.bank_id ||
+        !account.account_name
+    ) {
+        throw new Error(
+            'Chua xac nhan tai khoan thanh toan'
+        );
+    }
+
+    return {
+        bankId: account.bank_id,
+        accountId: account.account_number,
+        accountName: account.account_name
+    };
+}
+
+app.post('/api/admin/payment-account', async (req, res) => {
+    try {
+        const {
+            accountNumber,
+            bankName,
+            accountName
+        } = req.body;
+
+        // KIEM TRA DU LIEU NHAP
+        if (
+            !accountNumber ||
+            !bankName ||
+            !accountName
+        ) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    'Vui long nhap day du so tai khoan, ngan hang va ten chu tai khoan'
+            });
+        }
+
+        // LAY DANH SACH TAI KHOAN SEPAY
+        const bankList =
+            await getSepayBankAccounts();
+
+
+        // CHUAN HOA DU LIEU NHAP
+        const inputAccountNumber =
+            String(accountNumber).trim();
+
+        const inputBankName =
+            normalizeText(bankName);
+
+        const inputAccountName =
+            normalizeText(accountName);
+
+        // Tim tai khoan
+        const account = bankList.find(item => {
+
+            const sepayAccountNumber =
+                String(item.account_number || '').trim();
+
+            const sepayBankShortName =
+                normalizeText(item.bank_short_name);
+
+            const sepayBankCode =
+                normalizeText(item.bank_code);
+
+            const sepayBankFullName =
+                normalizeText(item.bank_full_name);
+
+            const sepayAccountName =
+                normalizeText(item.account_holder_name);
+
+            const bankMatched =
+                inputBankName === sepayBankShortName ||
+                inputBankName === sepayBankCode ||
+                inputBankName === sepayBankFullName;
+
+            const accountMatched =
+                inputAccountNumber ===
+                sepayAccountNumber;
+
+            const nameMatched =
+                inputAccountName ===
+                sepayAccountName;
+
+            return (
+                accountMatched &&
+                bankMatched &&
+                nameMatched
+            );
+        });
+
+        if (!account) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    'Tai khoan khong ton tai trong danh sach tai khoan SePay hoac thong tin khong khop'
+            });
+        }
+
+        
+
+        const pool =
+            await sql.connect(dbConfig);
+
+        const updateResult = await pool
+        .request()
+        .input('id', sql.Int, 1)
+        .input(
+            'bankId',
+            sql.NVarChar(50),
+            account.bank_short_name
+        )
+        .input(
+            'accountNumber',
+            sql.VarChar(50),
+            account.account_number
+        )
+        .input(
+            'accountName',
+            sql.NVarChar(255),
+            account.account_holder_name
+        )
+        .query(`
+            UPDATE payment_config
+            SET
+                bank_id = @bankId,
+                account_number = @accountNumber,
+                account_name = @accountName,
+                updated_at = GETDATE()
+            WHERE id = @id
+        `);
+
+        if (updateResult.rowsAffected[0] === 0) {
+            throw new Error(
+                'Khong tim thay dong payment_config co id = 1'
+            );
+        }
+
+        console.log(
+            '======================================'
+        );
+
+        console.log(
+            'DA XAC NHAN TAI KHOAN THANH TOAN'
+        );
+
+        console.log({
+            bankId: account.bank_short_name,
+            accountNumber: account.account_number,
+            accountName: account.account_holder_name
+        });
+
+        console.log(
+            '======================================'
+        );
+
+        return res.json({
+            success: true,
+            message:
+                'Xac nhan tai khoan thanh cong',
+            data: {
+                bankId: account.bank_short_name,
+                accountNumber: account.account_number,
+                accountName: account.account_holder_name
+            }
+        });
+
+    } catch (error) {
+        console.error(
+            'Payment account error:',
+            error
+        );
+
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
+});
+
+app.get('/api/payment-methods', async (req, res) => {
+    try {
+        const bankList =
+            await getSepayBankAccounts();
+            console.log('log1' + typeof(bankList))
+
+
+        const methods = bankList.map(account => ({
+            id: account.id,
+            bankName: account.bank_short_name,
+            bankCode: account.bank_code,
+            accountNumber: account.account_number,
+            accountHolder:
+                account.account_holder_name,
+            active: account.active
+        }));
+
+        res.json({
+            success: true,
+            data: methods
+        });
+
+    } catch (error) {
+        console.error(
+            'Payment methods error:',
+            error
+        );
+
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+
 // API TAO DON HANG
 app.post('/api/orders', async (req, res) => {
+    console.log('eheheh');
     try {
         // LAY LOAI VE
         const {ticketType} = req.body;
@@ -88,8 +374,10 @@ app.post('/api/orders', async (req, res) => {
             )
         `);
 
+        const bankAccount = await getSepayBankAccount();
+
         // TAO LINK QR
-        const qrUrl = `https://img.vietqr.io/image/${process.env.BANK_ID}-${process.env.ACCOUNT_ID}-compact.png?amount=${amount}&addInfo=${encodeURIComponent(paymentContent)}&accountName=${encodeURIComponent(process.env.ACCOUNT_NAME)}`;
+        const qrUrl = `https://img.vietqr.io/image/${bankAccount.bankId}-${bankAccount.accountId}-compact.png?amount=${amount}&addInfo=${encodeURIComponent(paymentContent)}&accountName=${encodeURIComponent(bankAccount.accountName)}`;
         res.json({
             success: true,
             orderCode: orderCode,
@@ -338,6 +626,7 @@ app.post('/webhook/sepay', async (req, res) => {
     }
 
 });
+
 
 // CHAY SERVER
 app.listen(PORT, () => {
