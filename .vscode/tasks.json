@@ -1,0 +1,108 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "aobcn npm checks",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"cd /d C:\\Users\\ADMIN\\Desktop\\React\\aobcn && npm ci && npm run build && npm run lint"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "inspect node locks",
+			"type": "shell",
+			"command": "powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Get-Process -Name node,npm -ErrorAction SilentlyContinue | Select-Object Id,ProcessName,Path"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "inspect node processes",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"tasklist /FI \"IMAGENAME eq node.exe\" /FO LIST"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "list running processes",
+			"type": "shell",
+			"command": "tasklist",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "check node locks",
+			"type": "shell",
+			"command": "cmd.exe /c tasklist ^| findstr /i node",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "stop node lock holders",
+			"type": "shell",
+			"command": "Stop-Process",
+			"args": [
+				"-Id",
+				"24552,28868,20172,26732,14660,21960",
+				"-Force"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "aobcn build verification",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"cd /d C:\\Users\\ADMIN\\Desktop\\React\\aobcn && npm run build"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "aobcn lint verification",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"cd /d C:\\Users\\ADMIN\\Desktop\\React\\aobcn && npm run lint"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "aobcn lint concise",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"cd /d C:\\Users\\ADMIN\\Desktop\\React\\aobcn && npm run lint -- --format compact"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "extract lint errors",
+			"type": "shell",
+			"command": "cmd.exe /c cd /d C:\\Users\\ADMIN\\Desktop\\React\\aobcn ^&^& npm run lint 2^>^&1 ^| findstr /i \" error  warning  problems\"",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": []
+		}
+	]
+}

@@ -38,6 +38,32 @@ buttons.forEach(button => {
                 return;
             }
 
+            const bankDeepLinks =
+                document.getElementById('bankDeepLinks');
+
+            bankDeepLinks.style.display = 'block';
+
+            bankDeepLinks
+                .querySelectorAll('.bank-btn')
+                .forEach(button => {
+
+                    const bank = button.dataset.bank;
+
+                    button.onclick = () => {
+                        const deeplink =
+                            data.deeplinks?.[bank];
+
+                        if (!deeplink) {
+                            alert(
+                                'Ngân hàng này chưa hỗ trợ deeplink'
+                            );
+                            return;
+                        }
+
+                        window.location.href = deeplink;
+                    };
+                });
+
             // Hiển thị thông tin đơn hàng
             document.getElementById('thongTinThanhToan').innerHTML = `
                 ${data.ticketType} -

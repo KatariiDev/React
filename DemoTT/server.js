@@ -377,15 +377,45 @@ app.post('/api/orders', async (req, res) => {
         const bankAccount = await getSepayBankAccount();
 
         // TAO LINK QR
-        const qrUrl = `https://img.vietqr.io/image/${bankAccount.bankId}-${bankAccount.accountId}-compact.png?amount=${amount}&addInfo=${encodeURIComponent(paymentContent)}&accountName=${encodeURIComponent(bankAccount.accountName)}`;
+        const qrUrl =
+            `https://img.vietqr.io/image/` +
+            `${bankAccount.bankId}-` +
+            `${bankAccount.accountId}-compact.png` +
+            `?amount=${amount}` +
+            `&addInfo=${encodeURIComponent(paymentContent)}` +
+            `&accountName=${encodeURIComponent(bankAccount.accountName)}`;
+
+
+        // Deeplink
+        const createDeeplink = (appId) => {
+            const params = new URLSearchParams({
+                app: appId,
+                ba: `${bankAccount.accountId}@mb`,
+                am: String(amount),
+                tn: paymentContent,
+                bn: bankAccount.accountName
+            });
+
+            return `https://dl.vietqr.io/pay?${params.toString()}`;
+        };
+
+        const deeplinks = {
+            mb: createDeeplink('mb'),
+            bidv: createDeeplink('bidv'),
+            icb: createDeeplink('icb'),
+            acb: createDeeplink('acb'),
+            vcb: createDeeplink('vcb')
+        };
+
         res.json({
             success: true,
-            orderCode: orderCode,
-            ticketType: ticketType,
-            amount: amount,
-            qrUrl: qrUrl,
+            orderCode,
+            ticketType,
+            amount,
+            qrUrl,
+            deeplinks,
             status: 'PENDING'
-        })
+        });
     } catch (e) {
         console.log('Error while create order: ', e);
         res.status(500).json({
